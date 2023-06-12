@@ -185,7 +185,7 @@ public static class Excel2Json
 
     private static void ExportClass(ExcelWorksheet sheet, string className)
     {
-        var id = sheet.Cells[TYPE, ID].Value;
+        var id = sheet.Cells[TYPE, ID].GetValue<string>();
         var name = className;
         var col = sheet.Dimension.End.Column;
         List<List<string>> builds = new List<List<string>>();
@@ -233,7 +233,7 @@ public static class Excel2Json
             builder.AppendLine(null);
         }
 
-        builder.AppendLine($"{Indent(level)}private static Dictionary<int, {name}> table;");
+        builder.AppendLine($"{Indent(level)}private static Dictionary<{id}, {name}> table;");
         builder.AppendLine(null);
         builder.AppendLine($"{Indent(level)}public static {name} Get({id} id)");
         builder.AppendLine($"{Indent(level)}{{");
@@ -244,7 +244,7 @@ public static class Excel2Json
         builder.AppendLine(null);
         builder.AppendLine($"{Indent(level)}static {name}()");
         builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}table = JsonConvert.DeserializeObject<Dictionary<int, {name}>>({manager}.Load(typeof({name})));");
+        builder.AppendLine($"{Indent(++level)}table = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>({manager}.Load(typeof({name})));");
         builder.AppendLine($"{Indent(--level)}}}");
 
 
