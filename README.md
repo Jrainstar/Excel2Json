@@ -7,7 +7,7 @@ public class Main : MonoBehaviour
     void Start()
     {
         TableManager.onLoad = (name) => { return Resources.Load<TextAsset>(name).text; };
-        Debug.Log(Pokemon1.Get(10001).name);
+        Debug.Log(Example.Get(10001).name);
     }
 }
 ```
