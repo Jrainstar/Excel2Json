@@ -346,6 +346,36 @@ public static class Excel2Json
                             AddDictionary(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => val);
                             break;
                         }
+                    case "int:int[]":
+                        {
+                            AddArrayDictionary(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => int.Parse(val));
+                            break;
+                        }
+                    case "int:float[]":
+                        {
+                            AddArrayDictionary(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => float.Parse(val));
+                            break;
+                        }
+                    case "int:string[]":
+                        {
+                            AddArrayDictionary(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => val);
+                            break;
+                        }
+                    case "string:int[]":
+                        {
+                            AddArrayDictionary(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => int.Parse(val));
+                            break;
+                        }
+                    case "string:float[]":
+                        {
+                            AddArrayDictionary(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => float.Parse(val));
+                            break;
+                        }
+                    case "string:string[]":
+                        {
+                            AddArrayDictionary(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => val);
+                            break;
+                        }
                 }
             }
             table.Add(name, jobject);
@@ -388,6 +418,25 @@ public static class Excel2Json
         {
             string[] pair = element.Split(':');
             table.Add(pair[0], func(pair[1]));
+        }
+        jobject.Add(name, table);
+    }
+
+    private static void AddArrayDictionary(JObject jobject, string name, string value, Func<string, JToken> func)
+    {
+        JObject table = new JObject();
+        string[] elements = (value == null) ? new string[0] : value.Substring(0, value.Length - 1).Split("],");
+        foreach (var element in elements)
+        {
+            JArray array = new JArray();
+            string[] pair = element.Split(':');
+            string arrayStr = pair[1].Substring(1);
+            var datas = arrayStr.Split(',');
+            foreach (var data in datas)
+            {
+                array.Add(func(data));
+            }
+            table.Add(pair[0], array);
         }
         jobject.Add(name, table);
     }
