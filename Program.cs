@@ -7,5 +7,5 @@ using System.Xml.Linq;
 
 const string config = "./conf.xml";
 Excel2Json.Exprot(config);
-Console.WriteLine("导出完成");
+Console.WriteLine("输出结束");
 Console.ReadKey();

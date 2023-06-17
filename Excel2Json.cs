@@ -31,6 +31,10 @@ public static class Excel2Json
 
 
     private static List<ExcelRule> rules = new List<ExcelRule>();
+    private static Dictionary<string, List<string>> classes = new Dictionary<string, List<string>>();
+    private static Dictionary<string, JObject> tables = new Dictionary<string, JObject>();
+
+    private static List<string> accesses = new List<string>();
 
     private static string manager = "TableManager";
 
@@ -44,8 +48,26 @@ public static class Excel2Json
 
         Clear();
 
-        ExprotExcels();
+        CollectExcels();
+        ExportExcels();
         ExportManager();
+
+        ShowAllAccess();
+    }
+
+    private static void ShowAllAccess()
+    {
+        Console.WriteLine("==============================================");
+        foreach (var access in accesses)
+        {
+            ShowAccess(access);
+        }
+        Console.WriteLine("==============================================");
+    }
+
+    private static void ShowAccess(string access)
+    {
+        Console.WriteLine($"========{access}");
     }
 
     private static void Clear()
@@ -99,15 +121,71 @@ public static class Excel2Json
         ns = root.Element("namespace")?.Value;
     }
 
-    private static void ExprotExcels()
+    private static void CollectExcels()
     {
         foreach (var rule in rules)
         {
-            ExprotExcel(rule);
+            CollectExcel(rule);
         }
     }
 
-    private static void ExprotExcel(ExcelRule rule)
+    private static void ExportExcels()
+    {
+        ExportClasses();
+        ExportTables();
+    }
+
+    private static void ExportClasses()
+    {
+        foreach (var pair in classes)
+        {
+            if (CheckContents(pair.Value))
+            {
+                accesses.Add(pair.Key);
+                foreach (var csharp in csharps)
+                {
+                    if (!Directory.Exists(csharp))
+                    {
+                        Directory.CreateDirectory(csharp);
+                    }
+                    File.WriteAllText($"{csharp}/{pair.Key}.cs", pair.Value[0]);
+                }
+            }
+        }
+    }
+
+    private static void ExportTables()
+    {
+        foreach (var table in tables)
+        {
+            if (!accesses.Contains(table.Key))
+            {
+                Console.WriteLine($"==============================================");
+                Console.WriteLine($"{table.Key}字段不完全匹配!!!!!!!->拒绝输出!!!!!!!!");
+                continue;
+            }
+            foreach (var json in jsons)
+            {
+                if (!Directory.Exists(json))
+                {
+                    Directory.CreateDirectory(json);
+                }
+                File.WriteAllText($"{json}/{table.Key}.json", table.Value.ToString());
+            }
+        }
+    }
+
+    private static bool CheckContents(List<string> contents)
+    {
+        if (contents.Count <= 1) return true;
+        foreach (var content in contents)
+        {
+            if (content != contents[0]) return false;
+        }
+        return true;
+    }
+
+    private static void CollectExcel(ExcelRule rule)
     {
         try
         {
@@ -117,73 +195,32 @@ public static class Excel2Json
             {
                 using (ExcelPackage excelPackage = new ExcelPackage(stream))
                 {
-                    Console.WriteLine($"开始导出---{rule.excelName}->{rule.className}");
+                    Console.WriteLine($"==============================================");
+                    Console.WriteLine($"开始收集->{rule.className}---{rule.excelName}");
 
-                    JObject table = new JObject();
-                    var sheet = GetSheet(excelPackage, rule.sheetNames[0]);
-                    Console.WriteLine($"正在生成---{rule.className}");
-                    ExportClass(sheet, rule.className);
+                    JObject table;
+                    ExcelWorksheet sheet;
+
                     foreach (var sheetName in rule.sheetNames)
                     {
                         sheet = GetSheet(excelPackage, sheetName);
+                        if (!tables.ContainsKey(rule.className))
+                        {
+                            tables.Add(rule.className, new JObject());
+                        }
+                        table = tables[rule.className];
+                        CollectClass(sheet, rule.className);
                         CollectTable(sheet, table);
-                        Console.WriteLine($"正在收集---{sheetName}");
+                        Console.WriteLine($"正在收集->{rule.className}---{sheetName}");
                     }
-                    ExportTable(table, rule.className);
-                    Console.WriteLine($"导出成功---{rule.className}");
+                    Console.WriteLine($"收集完成->{rule.className}---{rule.excelName}");
                 }
             }
         }
         catch (IOException ioe) { }
     }
 
-    public static ExcelWorksheet GetSheet(ExcelPackage excelPackage, string sheetName)
-    {
-        foreach (var worksheet in excelPackage.Workbook.Worksheets)
-        {
-            if (worksheet.Name == sheetName) return worksheet;
-        }
-        return null;
-    }
-
-    private static void ExportManager()
-    {
-        StringBuilder builder = new StringBuilder();
-        var level = 0;
-        builder.AppendLine("using System;");
-        builder.AppendLine(null);
-
-        if (!string.IsNullOrEmpty(ns))
-        {
-            builder.AppendLine($"namespace {ns}");
-            builder.AppendLine($"{Indent(level)}{{");
-        }
-
-        builder.AppendLine($"{Indent(++level)}public static class {manager}");
-        builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}public static Func<string, string> onLoad {{ get; set; }}");
-        builder.AppendLine($"{Indent(level)}public static string Load(Type type)");
-        builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}return onLoad?.Invoke(type.Name);");
-        builder.AppendLine($"{Indent(--level)}}}");
-        builder.AppendLine($"{Indent(--level)}}}");
-
-        if (!string.IsNullOrEmpty(ns))
-        {
-            builder.AppendLine($"{Indent(--level)}}}");
-        }
-
-        foreach (var csharp in csharps)
-        {
-            if (!Directory.Exists(csharp))
-            {
-                Directory.CreateDirectory(csharp);
-            }
-            File.WriteAllText($"{csharp}/{manager}.cs", builder.ToString());
-        }
-    }
-
-    private static void ExportClass(ExcelWorksheet sheet, string className)
+    private static void CollectClass(ExcelWorksheet sheet, string className)
     {
         var id = sheet.Cells[TYPE, ID].GetValue<string>();
         var name = className;
@@ -254,25 +291,56 @@ public static class Excel2Json
             builder.AppendLine($"{Indent(--level)}}}");
         }
 
+        if (!classes.ContainsKey(className))
+        {
+            classes.Add(className, new List<string>());
+        }
+        classes[className].Add(builder.ToString());
+    }
+
+    public static ExcelWorksheet GetSheet(ExcelPackage excelPackage, string sheetName)
+    {
+        foreach (var worksheet in excelPackage.Workbook.Worksheets)
+        {
+            if (worksheet.Name == sheetName) return worksheet;
+        }
+        return null;
+    }
+
+    private static void ExportManager()
+    {
+        StringBuilder builder = new StringBuilder();
+        var level = 0;
+        builder.AppendLine("using System;");
+        builder.AppendLine(null);
+
+        if (!string.IsNullOrEmpty(ns))
+        {
+            builder.AppendLine($"namespace {ns}");
+            builder.AppendLine($"{Indent(level)}{{");
+        }
+
+        builder.AppendLine($"{Indent(++level)}public static class {manager}");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}public static Func<string, string> onLoad {{ get; set; }}");
+        builder.AppendLine($"{Indent(level)}public static string Load(Type type)");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}return onLoad?.Invoke(type.Name);");
+        builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(--level)}}}");
+
+        if (!string.IsNullOrEmpty(ns))
+        {
+            builder.AppendLine($"{Indent(--level)}}}");
+        }
+
         foreach (var csharp in csharps)
         {
             if (!Directory.Exists(csharp))
             {
                 Directory.CreateDirectory(csharp);
             }
-            File.WriteAllText($"{csharp}/{name}.cs", builder.ToString());
-        }
-    }
-
-    private static void ExportTable(JObject table, string className)
-    {
-        foreach (var json in jsons)
-        {
-            if (!Directory.Exists(json))
-            {
-                Directory.CreateDirectory(json);
-            }
-            File.WriteAllText($"{json}/{className}.json", table.ToString());
+            File.WriteAllText($"{csharp}/{manager}.cs", builder.ToString());
         }
     }
 
