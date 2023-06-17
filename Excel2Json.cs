@@ -326,6 +326,21 @@ public static class Excel2Json
                             AddArray(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => val);
                             break;
                         }
+                    case "int[][]":
+                        {
+                            AddArrayArray(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => int.Parse(val));
+                            break;
+                        }
+                    case "float[][]":
+                        {
+                            AddArrayArray(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => float.Parse(val));
+                            break;
+                        }
+                    case "string[][]":
+                        {
+                            AddArrayArray(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => val);
+                            break;
+                        }
                     case "int:int":
                         {
                             AddDictionary(jobject, sheet.Cells[NAME, j].GetValue<string>(), sheet.Cells[i, j].GetValue<string>(), (val) => int.Parse(val));
@@ -382,7 +397,6 @@ public static class Excel2Json
         }
     }
 
-
     private static string Indent(int level)
     {
         var sb = new StringBuilder();
@@ -406,6 +420,24 @@ public static class Excel2Json
         foreach (var element in elements)
         {
             jarray0.Add(func(element));
+        }
+        jobject.Add(name, jarray0);
+    }
+
+    private static void AddArrayArray(JObject jobject, string name, string value, Func<string, JToken> func)
+    {
+        JArray jarray0 = new JArray();
+        string[] elements = (value == null) ? new string[0] : value.Substring(0, value.Length - 1).Split("],");
+        foreach (var element in elements)
+        {
+            JArray array = new JArray();
+            string arrayStr = element.Substring(1);
+            var datas = arrayStr.Split(',');
+            foreach (var data in datas)
+            {
+                array.Add(func(data));
+            }
+            jarray0.Add(array);
         }
         jobject.Add(name, jarray0);
     }
