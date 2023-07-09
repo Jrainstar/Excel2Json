@@ -1,15 +1,12 @@
 # Excel2Json
 
 ```c#
-// Unity示例
-public class Main : MonoBehaviour
+TableBuilder.onLoad = (string fileName) =>
 {
-    void Start()
-    {
-        TableManager.onLoad = (name) => { return Resources.Load<TextAsset>(name).text; };
-        Debug.Log(Example.Get(10001).name);
-    }
-}
+    return File.ReadAllText($"C:\\Users\\asus\\Documents\\Excel2Json\\Gen\\json\\{fileName}.json");
+};
+
+Console.WriteLine(Example.Get(10001, "Alter").name);
 ```
 
 - 支持数据类型
