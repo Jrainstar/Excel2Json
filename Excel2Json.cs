@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
+using System.Data;
+using System.Diagnostics;
 using System.Text;
 using System.Xml.Linq;
 
@@ -31,12 +33,14 @@ public static class Excel2Json
 
 
     private static List<ExcelRule> rules = new List<ExcelRule>();
+    private static Dictionary<string, string> desces = new Dictionary<string, string>();
     private static Dictionary<string, List<string>> classes = new Dictionary<string, List<string>>();
     private static Dictionary<string, JObject> tables = new Dictionary<string, JObject>();
 
     private static List<string> accesses = new List<string>();
 
-    private static string manager = "TableManager";
+    private static string tableBuilder = "TableBuilder";
+    private static string tableObject = "TableObject";
 
     public static void Exprot(string export)
     {
@@ -44,12 +48,14 @@ public static class Excel2Json
 
         GetPath();
         GetExcels();
+        GetClasses();
         GetNameSpace();
 
         Clear();
 
         CollectExcels();
         ExportExcels();
+        ExportObject();
         ExportManager();
 
         ShowAllAccess();
@@ -100,21 +106,30 @@ public static class Excel2Json
         var xExcels = root.Elements("excel");
         foreach (var excel in xExcels)
         {
-            var xRules = excel.Elements("rule");
-            var excelName = excel.Element("name");
-            foreach (var rule in xRules)
+            var excelName = excel.Attribute("name").Value;
+            var sheetss = excel.Elements("sheets");
+            foreach (var sheets in sheetss)
             {
-                var sheetNames = rule.Element("sheets");
-                var className = rule.Element("class");
+                var className = sheets.Attribute("class").Value;
                 rules.Add(new ExcelRule()
                 {
-                    excelName = excelName?.Value,
-                    sheetNames = sheetNames?.Value.Split(","),
-                    className = className?.Value,
+                    excelName = excelName,
+                    sheetNames = sheets.Value.Split(","),
+                    className = className
                 });
             }
         }
     }
+
+    private static void GetClasses()
+    {
+        var xClasses = root.Elements("class");
+        foreach (var xClass in xClasses)
+        {
+            desces.Add(xClass.Attribute("desc").Value, xClass.Value);
+        }
+    }
+
 
     private static void GetNameSpace()
     {
@@ -158,10 +173,11 @@ public static class Excel2Json
     {
         foreach (var table in tables)
         {
-            if (!accesses.Contains(table.Key))
+            var name = table.Key.Split("_")[0];
+            if (!accesses.Contains(name))
             {
                 Console.WriteLine($"==============================================");
-                Console.WriteLine($"{table.Key}字段不完全匹配!!!!!!!->拒绝输出!!!!!!!!");
+                Console.WriteLine($"{table.Key}->{name}->字段不完全匹配!!!!!!!->拒绝输出!!!!!!!!");
                 continue;
             }
             foreach (var json in jsons)
@@ -204,14 +220,18 @@ public static class Excel2Json
                     foreach (var sheetName in rule.sheetNames)
                     {
                         sheet = GetSheet(excelPackage, sheetName);
-                        if (!tables.ContainsKey(rule.className))
+                        var tag = sheet.Cells[TOP, LEFT].GetValue<string>();
+                        var end = string.IsNullOrEmpty(tag) ? "" : $"_{tag}";
+                        var className = rule.className;
+                        var tableName = $"{className}{end}";
+                        if (!tables.ContainsKey(tableName))
                         {
-                            tables.Add(rule.className, new JObject());
+                            tables.Add(tableName, new JObject());
                         }
-                        table = tables[rule.className];
-                        CollectClass(sheet, rule.className);
+                        table = tables[tableName];
+                        CollectClass(sheet, className);
                         CollectTable(sheet, table);
-                        Console.WriteLine($"正在收集->{rule.className}---{sheetName}");
+                        Console.WriteLine($"正在收集->{className}---{sheetName}");
                     }
                     Console.WriteLine($"收集完成->{rule.className}---{rule.excelName}");
                 }
@@ -224,6 +244,7 @@ public static class Excel2Json
     {
         var id = sheet.Cells[TYPE, ID].GetValue<string>();
         var name = className;
+        var desc = desces.ContainsKey(className) ? desces[className] : className;
         var col = sheet.Dimension.End.Column;
         List<List<string>> builds = new List<List<string>>();
 
@@ -256,9 +277,9 @@ public static class Excel2Json
             builder.AppendLine($"{Indent(level)}{{");
         }
         builder.AppendLine($"{Indent(++level)}/// <summary>");
-        builder.AppendLine($"{Indent(level)}/// {sheet.Cells[1, 1].GetValue<string>()}");
+        builder.AppendLine($"{Indent(level)}/// {desc}");
         builder.AppendLine($"{Indent(level)}/// <summary>");
-        builder.AppendLine($"{Indent(level)}public class {name}");
+        builder.AppendLine($"{Indent(level)}public class {name} : TableObject<{name}>");
         builder.AppendLine($"{Indent(level)}{{");
         level++;
         foreach (var build in builds)
@@ -270,19 +291,19 @@ public static class Excel2Json
             builder.AppendLine(null);
         }
 
-        builder.AppendLine($"{Indent(level)}private static Dictionary<{id}, {name}> table;");
-        builder.AppendLine(null);
-        builder.AppendLine($"{Indent(level)}public static {name} Get({id} id)");
-        builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}table.TryGetValue(id, out {name} value);");
-        builder.AppendLine($"{Indent(level)}return value;");
-        builder.AppendLine($"{Indent(--level)}}}");
+        //builder.AppendLine($"{Indent(level)}private static Dictionary<{id}, {name}> table;");
+        //builder.AppendLine(null);
+        //builder.AppendLine($"{Indent(level)}public static {name} Get({id} id)");
+        //builder.AppendLine($"{Indent(level)}{{");
+        //builder.AppendLine($"{Indent(++level)}table.TryGetValue(id, out {name} value);");
+        //builder.AppendLine($"{Indent(level)}return value;");
+        //builder.AppendLine($"{Indent(--level)}}}");
 
-        builder.AppendLine(null);
-        builder.AppendLine($"{Indent(level)}static {name}()");
-        builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}table = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>({manager}.Load(typeof({name})));");
-        builder.AppendLine($"{Indent(--level)}}}");
+        //builder.AppendLine(null);
+        //builder.AppendLine($"{Indent(level)}static {name}()");
+        //builder.AppendLine($"{Indent(level)}{{");
+        //builder.AppendLine($"{Indent(++level)}table = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>({tableBuilder}.Load(typeof({name})));");
+        //builder.AppendLine($"{Indent(--level)}}}");
 
 
         builder.AppendLine($"{Indent(--level)}}}");
@@ -307,11 +328,12 @@ public static class Excel2Json
         return null;
     }
 
-    private static void ExportManager()
+    private static void ExportObject()
     {
         StringBuilder builder = new StringBuilder();
         var level = 0;
         builder.AppendLine("using System;");
+        builder.AppendLine("using Newtonsoft.Json;");
         builder.AppendLine(null);
 
         if (!string.IsNullOrEmpty(ns))
@@ -320,12 +342,38 @@ public static class Excel2Json
             builder.AppendLine($"{Indent(level)}{{");
         }
 
-        builder.AppendLine($"{Indent(++level)}public static class {manager}");
+        builder.AppendLine($"{Indent(++level)}public class TableObject<T>");
         builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}public static Func<string, string> onLoad {{ get; set; }}");
-        builder.AppendLine($"{Indent(level)}public static string Load(Type type)");
+        builder.AppendLine($"{Indent(++level)}private static Dictionary<int, T> curTable;");
+        builder.AppendLine(null);
+        builder.AppendLine($"{Indent(level)}private static Dictionary<string, Dictionary<int, T>> tagTable;");
+
+        builder.AppendLine(null);
+
+        builder.AppendLine($"{Indent(level)}public static T Get(int id, string tag = \"\")");
         builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}return onLoad?.Invoke(type.Name);");
+        builder.AppendLine($"{Indent(++level)}if (string.IsNullOrEmpty(tag))");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}if (curTable == null)");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}curTable = JsonConvert.DeserializeObject<Dictionary<int, T>>(TableBuilder.Load(typeof(T).Name));");
+        builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(level)}curTable.TryGetValue(id, out T value);");
+        builder.AppendLine($"{Indent(level)}return value;");
+        builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(level)}else");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}if (tagTable == null)");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}tagTable = new Dictionary<string, Dictionary<int, T>>();");
+        builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(++level)}if (!tagTable.ContainsKey(tag))");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}tagTable[tag] = JsonConvert.DeserializeObject<Dictionary<int, T>>(TableBuilder.Load($\"{{typeof(T).Name}}_{{tag}}\"));");
+        builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(level)}tagTable[tag].TryGetValue(id, out T value);");
+        builder.AppendLine($"{Indent(level)}return value;");
+        builder.AppendLine($"{Indent(--level)}}}");
         builder.AppendLine($"{Indent(--level)}}}");
         builder.AppendLine($"{Indent(--level)}}}");
 
@@ -340,12 +388,50 @@ public static class Excel2Json
             {
                 Directory.CreateDirectory(csharp);
             }
-            File.WriteAllText($"{csharp}/{manager}.cs", builder.ToString());
+            File.WriteAllText($"{csharp}/{tableObject}.cs", builder.ToString());
+        }
+    }
+
+    private static void ExportManager()
+    {
+        StringBuilder builder = new StringBuilder();
+        var level = 0;
+        builder.AppendLine("using System;");
+        builder.AppendLine(null);
+
+        if (!string.IsNullOrEmpty(ns))
+        {
+            builder.AppendLine($"namespace {ns}");
+            builder.AppendLine($"{Indent(level)}{{");
+        }
+
+        builder.AppendLine($"{Indent(++level)}public static class {tableBuilder}");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}public static Func<string, string> onLoad {{ get; set; }}");
+        builder.AppendLine($"{Indent(level)}public static string Load(string fileName)");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}return onLoad?.Invoke(fileName);");
+        builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(--level)}}}");
+
+        if (!string.IsNullOrEmpty(ns))
+        {
+            builder.AppendLine($"{Indent(--level)}}}");
+        }
+
+        foreach (var csharp in csharps)
+        {
+            if (!Directory.Exists(csharp))
+            {
+                Directory.CreateDirectory(csharp);
+            }
+            File.WriteAllText($"{csharp}/{tableBuilder}.cs", builder.ToString());
         }
     }
 
     private static void CollectTable(ExcelWorksheet sheet, JObject table)
     {
+
         var row = sheet.Dimension.End.Row;
         var col = sheet.Dimension.End.Column;
 
