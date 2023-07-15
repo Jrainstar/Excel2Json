@@ -6,7 +6,7 @@ namespace Jrainstar.Table
 	/// <summary>
 	/// 示例
 	/// <summary>
-	public class Example : TableObject<Example>
+	public class Example
 	{
 		/// <summary>
 		/// 编号
@@ -43,5 +43,33 @@ namespace Jrainstar.Table
 		/// </summary>
 		public Dictionary<int,int[]> dictArray { get; set; }
 
+		private static Dictionary<int, Example> mainGroup { get; set; }
+		private static Dictionary<string, Dictionary<int, Example>> tagGroup { get; set; }
+
+		public static Example Get(int id, string tag = "")
+		{
+			if (string.IsNullOrEmpty(tag))
+			{
+				if (mainGroup == null)
+				{
+					mainGroup = JsonConvert.DeserializeObject<Dictionary<int, Example>>(TableBuilder.Load(typeof(Example).Name));
+				}
+				mainGroup.TryGetValue(id, out Example value);
+				return value;
+			}
+			else
+			{
+				if (tagGroup == null)
+				{
+					tagGroup = new Dictionary<string, Dictionary<int, Example>>();
+				}
+				if (!tagGroup.ContainsKey(tag))
+				{
+					tagGroup[tag] = JsonConvert.DeserializeObject<Dictionary<int, Example>>(TableBuilder.Load($"{typeof(Example).Name}_{tag}"));
+				}
+				tagGroup[tag].TryGetValue(id, out Example value);
+				return value;
+			}
+		}
 	}
 }

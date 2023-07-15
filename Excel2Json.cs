@@ -55,7 +55,6 @@ public static class Excel2Json
 
         CollectExcels();
         ExportExcels();
-        ExportObject();
         ExportManager();
 
         ShowAllAccess();
@@ -279,7 +278,7 @@ public static class Excel2Json
         builder.AppendLine($"{Indent(++level)}/// <summary>");
         builder.AppendLine($"{Indent(level)}/// {desc}");
         builder.AppendLine($"{Indent(level)}/// <summary>");
-        builder.AppendLine($"{Indent(level)}public class {name} : TableObject<{name}>");
+        builder.AppendLine($"{Indent(level)}public class {name}");
         builder.AppendLine($"{Indent(level)}{{");
         level++;
         foreach (var build in builds)
@@ -291,22 +290,37 @@ public static class Excel2Json
             builder.AppendLine(null);
         }
 
-        //builder.AppendLine($"{Indent(level)}private static Dictionary<{id}, {name}> table;");
-        //builder.AppendLine(null);
-        //builder.AppendLine($"{Indent(level)}public static {name} Get({id} id)");
-        //builder.AppendLine($"{Indent(level)}{{");
-        //builder.AppendLine($"{Indent(++level)}table.TryGetValue(id, out {name} value);");
-        //builder.AppendLine($"{Indent(level)}return value;");
-        //builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(level)}private static Dictionary<{id}, {name}> mainGroup {{ get; set; }}");
+        builder.AppendLine($"{Indent(level)}private static Dictionary<string, Dictionary<{id}, {name}>> tagGroup {{ get; set; }}");
 
-        //builder.AppendLine(null);
-        //builder.AppendLine($"{Indent(level)}static {name}()");
-        //builder.AppendLine($"{Indent(level)}{{");
-        //builder.AppendLine($"{Indent(++level)}table = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>({tableBuilder}.Load(typeof({name})));");
-        //builder.AppendLine($"{Indent(--level)}}}");
-
-
+        builder.AppendLine(null);
+        builder.AppendLine($"{Indent(level)}public static {name} Get({id} id, string tag = \"\")");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}if (string.IsNullOrEmpty(tag))");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}if (mainGroup == null)");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}mainGroup = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>(TableBuilder.Load(typeof({name}).Name));");
         builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(level)}mainGroup.TryGetValue(id, out {name} value);");
+        builder.AppendLine($"{Indent(level)}return value;");
+        builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(level)}else");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}if (tagGroup == null)");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}tagGroup = new Dictionary<string, Dictionary<{id}, {name}>>();");
+        builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(level)}if (!tagGroup.ContainsKey(tag))");
+        builder.AppendLine($"{Indent(level)}{{");
+        builder.AppendLine($"{Indent(++level)}tagGroup[tag] = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>(TableBuilder.Load($\"{{typeof({name}).Name}}_{{tag}}\"));");
+        builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(level)}tagGroup[tag].TryGetValue(id, out {name} value);");
+        builder.AppendLine($"{Indent(level)}return value;");
+        builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(--level)}}}");
+        builder.AppendLine($"{Indent(--level)}}}");
+
         if (!string.IsNullOrEmpty(ns))
         {
             builder.AppendLine($"{Indent(--level)}}}");
