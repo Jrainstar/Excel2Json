@@ -24,7 +24,8 @@ public static class Excel2Json
     const int NAME = 3;
     const int TYPE = 4;
 
-    private static XElement root;
+    private static XElement confXml;
+    private static XElement pathXml;
 
     private static string ns;
     private static string excel;
@@ -43,9 +44,10 @@ public static class Excel2Json
     private static string groupTag = "@";
     // private static string tableObject = "TableObject";
 
-    public static void Exprot(string export)
+    public static void Exprot(string conf, string path)
     {
-        root = XDocument.Load(export).Root;
+        confXml = XDocument.Load(conf).Root;
+        pathXml = XDocument.Load(path).Root;
 
         GetPath();
         GetExcels();
@@ -95,7 +97,7 @@ public static class Excel2Json
 
     private static void GetPath()
     {
-        var path = root.Element("path");
+        var path = pathXml.Element("path");
         excel = path.Element("excel")?.Value;
         jsons = path.Elements("json")?.Select(xml => xml?.Value).ToArray();
         csharps = path.Elements("csharp")?.Select(xml => xml?.Value).ToArray();
@@ -103,7 +105,7 @@ public static class Excel2Json
 
     private static void GetExcels()
     {
-        var xExcels = root.Elements("excel");
+        var xExcels = confXml.Elements("excel");
         foreach (var excel in xExcels)
         {
             var excelName = excel.Attribute("name").Value;
@@ -123,7 +125,7 @@ public static class Excel2Json
 
     private static void GetClasses()
     {
-        var xClasses = root.Elements("class");
+        var xClasses = confXml.Elements("class");
         foreach (var xClass in xClasses)
         {
             desces.Add(xClass.Attribute("desc").Value, xClass.Value);
@@ -133,7 +135,7 @@ public static class Excel2Json
 
     private static void GetNameSpace()
     {
-        ns = root.Element("namespace")?.Value;
+        ns = confXml.Element("namespace")?.Value;
     }
 
     private static void CollectExcels()

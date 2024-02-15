@@ -1,5 +1,6 @@
-﻿const string config = "./conf.xml";
-Excel2Json.Exprot(config);
+﻿const string conf = "./conf.xml";
+const string path = "./path.xml";
+Excel2Json.Exprot(conf, path);
 Console.WriteLine("输出结束");
 Console.ReadKey();
 
