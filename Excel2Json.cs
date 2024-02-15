@@ -39,8 +39,9 @@ public static class Excel2Json
 
     private static List<string> accesses = new List<string>();
 
-    private static string tableBuilder = "TableBuilder";
-    private static string tableObject = "TableObject";
+    private static string configManager = "ConfigManager";
+    private static string groupTag = "@";
+    // private static string tableObject = "TableObject";
 
     public static void Exprot(string export)
     {
@@ -172,7 +173,7 @@ public static class Excel2Json
     {
         foreach (var table in tables)
         {
-            var name = table.Key.Split("_")[0];
+            var name = table.Key.Split(groupTag)[0];
             if (!accesses.Contains(name))
             {
                 Console.WriteLine($"==============================================");
@@ -220,7 +221,7 @@ public static class Excel2Json
                     {
                         sheet = GetSheet(excelPackage, sheetName);
                         var tag = sheet.Cells[TOP, LEFT].GetValue<string>();
-                        var end = string.IsNullOrEmpty(tag) ? "" : $"_{tag}";
+                        var end = string.IsNullOrEmpty(tag) ? "" : $"{groupTag}{tag}";
                         var className = rule.className;
                         var tableName = $"{className}{end}";
                         if (!tables.ContainsKey(tableName))
@@ -313,7 +314,7 @@ public static class Excel2Json
         builder.AppendLine($"{Indent(--level)}}}");
         builder.AppendLine($"{Indent(level)}if (!tagGroup.ContainsKey(tag))");
         builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}tagGroup[tag] = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>(TableBuilder.Load($\"{{typeof({name}).Name}}_{{tag}}\"));");
+        builder.AppendLine($"{Indent(++level)}tagGroup[tag] = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>(TableBuilder.Load($\"{{typeof({name}).Name}}{groupTag}{{tag}}\"));");
         builder.AppendLine($"{Indent(--level)}}}");
         builder.AppendLine($"{Indent(level)}tagGroup[tag].TryGetValue(id, out {name} value);");
         builder.AppendLine($"{Indent(level)}return value;");
@@ -342,69 +343,69 @@ public static class Excel2Json
         return null;
     }
 
-    private static void ExportObject()
-    {
-        StringBuilder builder = new StringBuilder();
-        var level = 0;
-        builder.AppendLine("using System;");
-        builder.AppendLine("using Newtonsoft.Json;");
-        builder.AppendLine(null);
+    //private static void ExportObject()
+    //{
+    //    StringBuilder builder = new StringBuilder();
+    //    var level = 0;
+    //    builder.AppendLine("using System;");
+    //    builder.AppendLine("using Newtonsoft.Json;");
+    //    builder.AppendLine(null);
 
-        if (!string.IsNullOrEmpty(ns))
-        {
-            builder.AppendLine($"namespace {ns}");
-            builder.AppendLine($"{Indent(level)}{{");
-        }
+    //    if (!string.IsNullOrEmpty(ns))
+    //    {
+    //        builder.AppendLine($"namespace {ns}");
+    //        builder.AppendLine($"{Indent(level)}{{");
+    //    }
 
-        builder.AppendLine($"{Indent(++level)}public class TableObject<T>");
-        builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}private static Dictionary<int, T> curTable;");
-        builder.AppendLine(null);
-        builder.AppendLine($"{Indent(level)}private static Dictionary<string, Dictionary<int, T>> tagTable;");
+    //    builder.AppendLine($"{Indent(++level)}public class TableObject<T>");
+    //    builder.AppendLine($"{Indent(level)}{{");
+    //    builder.AppendLine($"{Indent(++level)}private static Dictionary<int, T> curTable;");
+    //    builder.AppendLine(null);
+    //    builder.AppendLine($"{Indent(level)}private static Dictionary<string, Dictionary<int, T>> tagTable;");
 
-        builder.AppendLine(null);
+    //    builder.AppendLine(null);
 
-        builder.AppendLine($"{Indent(level)}public static T Get(int id, string tag = \"\")");
-        builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}if (string.IsNullOrEmpty(tag))");
-        builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}if (curTable == null)");
-        builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}curTable = JsonConvert.DeserializeObject<Dictionary<int, T>>(TableBuilder.Load(typeof(T).Name));");
-        builder.AppendLine($"{Indent(--level)}}}");
-        builder.AppendLine($"{Indent(level)}curTable.TryGetValue(id, out T value);");
-        builder.AppendLine($"{Indent(level)}return value;");
-        builder.AppendLine($"{Indent(--level)}}}");
-        builder.AppendLine($"{Indent(level)}else");
-        builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}if (tagTable == null)");
-        builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}tagTable = new Dictionary<string, Dictionary<int, T>>();");
-        builder.AppendLine($"{Indent(--level)}}}");
-        builder.AppendLine($"{Indent(++level)}if (!tagTable.ContainsKey(tag))");
-        builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}tagTable[tag] = JsonConvert.DeserializeObject<Dictionary<int, T>>(TableBuilder.Load($\"{{typeof(T).Name}}_{{tag}}\"));");
-        builder.AppendLine($"{Indent(--level)}}}");
-        builder.AppendLine($"{Indent(level)}tagTable[tag].TryGetValue(id, out T value);");
-        builder.AppendLine($"{Indent(level)}return value;");
-        builder.AppendLine($"{Indent(--level)}}}");
-        builder.AppendLine($"{Indent(--level)}}}");
-        builder.AppendLine($"{Indent(--level)}}}");
+    //    builder.AppendLine($"{Indent(level)}public static T Get(int id, string tag = \"\")");
+    //    builder.AppendLine($"{Indent(level)}{{");
+    //    builder.AppendLine($"{Indent(++level)}if (string.IsNullOrEmpty(tag))");
+    //    builder.AppendLine($"{Indent(level)}{{");
+    //    builder.AppendLine($"{Indent(++level)}if (curTable == null)");
+    //    builder.AppendLine($"{Indent(level)}{{");
+    //    builder.AppendLine($"{Indent(++level)}curTable = JsonConvert.DeserializeObject<Dictionary<int, T>>(TableBuilder.Load(typeof(T).Name));");
+    //    builder.AppendLine($"{Indent(--level)}}}");
+    //    builder.AppendLine($"{Indent(level)}curTable.TryGetValue(id, out T value);");
+    //    builder.AppendLine($"{Indent(level)}return value;");
+    //    builder.AppendLine($"{Indent(--level)}}}");
+    //    builder.AppendLine($"{Indent(level)}else");
+    //    builder.AppendLine($"{Indent(level)}{{");
+    //    builder.AppendLine($"{Indent(++level)}if (tagTable == null)");
+    //    builder.AppendLine($"{Indent(level)}{{");
+    //    builder.AppendLine($"{Indent(++level)}tagTable = new Dictionary<string, Dictionary<int, T>>();");
+    //    builder.AppendLine($"{Indent(--level)}}}");
+    //    builder.AppendLine($"{Indent(++level)}if (!tagTable.ContainsKey(tag))");
+    //    builder.AppendLine($"{Indent(level)}{{");
+    //    builder.AppendLine($"{Indent(++level)}tagTable[tag] = JsonConvert.DeserializeObject<Dictionary<int, T>>(TableBuilder.Load($\"{{typeof(T).Name}}_{{tag}}\"));");
+    //    builder.AppendLine($"{Indent(--level)}}}");
+    //    builder.AppendLine($"{Indent(level)}tagTable[tag].TryGetValue(id, out T value);");
+    //    builder.AppendLine($"{Indent(level)}return value;");
+    //    builder.AppendLine($"{Indent(--level)}}}");
+    //    builder.AppendLine($"{Indent(--level)}}}");
+    //    builder.AppendLine($"{Indent(--level)}}}");
 
-        if (!string.IsNullOrEmpty(ns))
-        {
-            builder.AppendLine($"{Indent(--level)}}}");
-        }
+    //    if (!string.IsNullOrEmpty(ns))
+    //    {
+    //        builder.AppendLine($"{Indent(--level)}}}");
+    //    }
 
-        foreach (var csharp in csharps)
-        {
-            if (!Directory.Exists(csharp))
-            {
-                Directory.CreateDirectory(csharp);
-            }
-            File.WriteAllText($"{csharp}/{tableObject}.cs", builder.ToString());
-        }
-    }
+    //    foreach (var csharp in csharps)
+    //    {
+    //        if (!Directory.Exists(csharp))
+    //        {
+    //            Directory.CreateDirectory(csharp);
+    //        }
+    //        File.WriteAllText($"{csharp}/{tableObject}.cs", builder.ToString());
+    //    }
+    //}
 
     private static void ExportManager()
     {
@@ -419,12 +420,12 @@ public static class Excel2Json
             builder.AppendLine($"{Indent(level)}{{");
         }
 
-        builder.AppendLine($"{Indent(++level)}public static class {tableBuilder}");
+        builder.AppendLine($"{Indent(++level)}public static class {configManager}");
         builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}public static Func<string, string> onLoad {{ get; set; }}");
+        builder.AppendLine($"{Indent(++level)}public static Func<string, string> OnLoad {{ get; set; }}");
         builder.AppendLine($"{Indent(level)}public static string Load(string fileName)");
         builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}return onLoad?.Invoke(fileName);");
+        builder.AppendLine($"{Indent(++level)}return OnLoad?.Invoke(fileName);");
         builder.AppendLine($"{Indent(--level)}}}");
         builder.AppendLine($"{Indent(--level)}}}");
 
@@ -439,7 +440,7 @@ public static class Excel2Json
             {
                 Directory.CreateDirectory(csharp);
             }
-            File.WriteAllText($"{csharp}/{tableBuilder}.cs", builder.ToString());
+            File.WriteAllText($"{csharp}/{configManager}.cs", builder.ToString());
         }
     }
 
