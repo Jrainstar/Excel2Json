@@ -278,7 +278,17 @@ public static class Excel2Json
             builder.AppendLine($"namespace {ns}");
             builder.AppendLine($"{Indent(level)}{{");
         }
-        builder.AppendLine($"{Indent(++level)}/// <summary>");
+
+        if (string.IsNullOrEmpty(ns))
+        {
+            builder.AppendLine($"{Indent(level)}/// <summary>");
+        }
+        else
+        {
+            builder.AppendLine($"{Indent(++level)}/// <summary>");
+        }
+
+        // builder.AppendLine($"{Indent(++level)}/// <summary>");
         builder.AppendLine($"{Indent(level)}/// {desc}");
         builder.AppendLine($"{Indent(level)}/// <summary>");
         builder.AppendLine($"{Indent(level)}public class {name}");
@@ -303,7 +313,7 @@ public static class Excel2Json
         builder.AppendLine($"{Indent(level)}{{");
         builder.AppendLine($"{Indent(++level)}if (mainGroup == null)");
         builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}mainGroup = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>(TableBuilder.Load(typeof({name}).Name));");
+        builder.AppendLine($"{Indent(++level)}mainGroup = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>({configManager}.Load(typeof({name}).Name));");
         builder.AppendLine($"{Indent(--level)}}}");
         builder.AppendLine($"{Indent(level)}mainGroup.TryGetValue(id, out {name} value);");
         builder.AppendLine($"{Indent(level)}return value;");
@@ -316,7 +326,7 @@ public static class Excel2Json
         builder.AppendLine($"{Indent(--level)}}}");
         builder.AppendLine($"{Indent(level)}if (!tagGroup.ContainsKey(tag))");
         builder.AppendLine($"{Indent(level)}{{");
-        builder.AppendLine($"{Indent(++level)}tagGroup[tag] = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>(TableBuilder.Load($\"{{typeof({name}).Name}}{groupTag}{{tag}}\"));");
+        builder.AppendLine($"{Indent(++level)}tagGroup[tag] = JsonConvert.DeserializeObject<Dictionary<{id}, {name}>>({configManager}.Load($\"{{typeof({name}).Name}}{groupTag}{{tag}}\"));");
         builder.AppendLine($"{Indent(--level)}}}");
         builder.AppendLine($"{Indent(level)}tagGroup[tag].TryGetValue(id, out {name} value);");
         builder.AppendLine($"{Indent(level)}return value;");
@@ -422,7 +432,16 @@ public static class Excel2Json
             builder.AppendLine($"{Indent(level)}{{");
         }
 
-        builder.AppendLine($"{Indent(++level)}public static class {configManager}");
+        if (string.IsNullOrEmpty(ns))
+        {
+            builder.AppendLine($"{Indent(level)}public static class {configManager}");
+        }
+        else
+        {
+            builder.AppendLine($"{Indent(++level)}public static class {configManager}");
+        }
+
+        // builder.AppendLine($"{Indent(++level)}public static class {configManager}");
         builder.AppendLine($"{Indent(level)}{{");
         builder.AppendLine($"{Indent(++level)}public static Func<string, string> OnLoad {{ get; set; }}");
         builder.AppendLine($"{Indent(level)}public static string Load(string fileName)");
